@@ -198,7 +198,6 @@ export const JustIframe = (): React.ReactElement => {
       template="react"
     >
       <CustomPreview />
-      <CustomPreview />
       <div
         style={{
           display: "flex",
@@ -216,3 +215,13 @@ export const JustIframe = (): React.ReactElement => {
     </SandpackProvider>
   );
 };
+
+export const MultiplePreviews: React.FC = () => (
+  <SandpackProvider template="react">
+    <SandpackLayout theme="codesandbox-dark">
+      <SandpackCodeEditor />
+      <SandpackPreview />
+      <SandpackPreview />
+    </SandpackLayout>
+  </SandpackProvider>
+);

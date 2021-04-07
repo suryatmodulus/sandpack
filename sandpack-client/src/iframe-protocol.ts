@@ -25,6 +25,21 @@ export class IFrameProtocol {
     this.globalListeners = [];
     this.channelListeners = [];
 
+    if (!iframe.getAttribute("sandbox")) {
+      iframe.setAttribute(
+        "sandbox",
+        "allow-forms allow-modals allow-popups allow-presentation allow-same-origin allow-scripts"
+      );
+    }
+    if (!iframe.getAttribute("allow")) {
+      iframe.setAttribute(
+        "allow",
+        "accelerometer; ambient-light-sensor; autoplay; camera; encrypted-media; geolocation; gyroscope; hid; microphone; midi; payment; usb; vr; xr-spatial-tracking"
+      );
+    }
+
+    iframe.src = origin;
+
     this.eventListener = this.eventListener.bind(this);
 
     if (typeof window !== "undefined") {

@@ -93,10 +93,7 @@ const BUNDLER_URL =
     : `https://${version.replace(/\./g, "-")}-sandpack.codesandbox.io/`;
 
 export class SandpackClient {
-  selector: string | undefined;
-  element: Element;
-  iframe: HTMLIFrameElement;
-  iframeProtocol: IFrameProtocol;
+  iframeProtocols: IFrameProtocol[];
   options: ClientOptions;
 
   fileResolverProtocol?: Protocol;
@@ -111,7 +108,7 @@ export class SandpackClient {
   unsubscribeChannelListener: UnsubscribeFunction;
 
   constructor(
-    selector: string | HTMLIFrameElement,
+    iframes: HTMLIFrameElement[],
     sandboxInfo: SandboxInfo,
     options: ClientOptions = {}
   ) {
@@ -122,97 +119,94 @@ export class SandpackClient {
     this.bundlerState = undefined;
     this.errors = [];
     this.status = "initializing";
+    this.iframeProtocols = [];
 
-    if (typeof selector === "string") {
-      this.selector = selector;
-      const element = document.querySelector(selector);
+    this.unsubscribeGlobalListener = () => {};
+    this.unsubscribeChannelListener = () => {};
 
-      if (!element) {
-        throw new Error(`No element found for selector '${selector}'`);
-      }
+    // TODO: Figure out if selector as string makes sense
+    // if (typeof selector === "string") {
+    //   const element = document.querySelector(selector);
 
-      this.element = element;
-      this.iframe = document.createElement("iframe");
-      this.initializeElement();
-    } else {
-      this.element = selector;
-      this.iframe = selector;
-    }
-    if (!this.iframe.getAttribute("sandbox")) {
-      this.iframe.setAttribute(
-        "sandbox",
-        "allow-forms allow-modals allow-popups allow-presentation allow-same-origin allow-scripts"
-      );
-    }
-    if (!this.iframe.getAttribute("allow")) {
-      this.iframe.setAttribute(
-        "allow",
-        "accelerometer; ambient-light-sensor; autoplay; camera; encrypted-media; geolocation; gyroscope; hid; microphone; midi; payment; usb; vr; xr-spatial-tracking"
-      );
-    }
+    //   if (!element) {
+    //     throw new Error(`No element found for selector '${selector}'`);
+    //   }
 
-    this.iframe.src = options.startRoute
-      ? new URL(options.startRoute, this.bundlerURL).toString()
-      : this.bundlerURL;
-    this.iframeProtocol = new IFrameProtocol(this.iframe, this.bundlerURL);
+    //   this.element = element;
+    //   this.iframe = document.createElement("iframe");
+    //   this.initializeElement();
+    // } else {
+    // this.element = selector;
+    // this.iframe = selector;
+    // }
 
-    this.unsubscribeGlobalListener = this.iframeProtocol.globalListen(
-      (mes: SandpackMessage) => {
-        if (mes.type !== "initialized" || !this.iframe.contentWindow) {
-          return;
-        }
+    iframes.forEach((iframe) => {
+      // TODO: Make it configurable per iframe
+      const origin = options.startRoute
+        ? new URL(options.startRoute, this.bundlerURL).toString()
+        : this.bundlerURL;
 
-        this.iframeProtocol.register();
+      const protocol = new IFrameProtocol(iframe, origin);
+      this.iframeProtocols.push(protocol);
 
-        if (this.options.fileResolver) {
-          // TODO: Find a common place for the Protocol to be implemented for both sandpack-core and sandpack-client
-          this.fileResolverProtocol = new Protocol(
-            "file-resolver",
-            async (data: { m: "isFile" | "readFile"; p: string }) => {
-              if (data.m === "isFile") {
-                return this.options.fileResolver!.isFile(data.p);
-              }
-
-              return this.options.fileResolver!.readFile(data.p);
-            },
-            this.iframe.contentWindow
-          );
-        }
-
-        this.updatePreview(this.sandboxInfo, true);
-      }
-    );
-
-    this.unsubscribeChannelListener = this.iframeProtocol.channelListen(
-      (mes: SandpackMessage) => {
-        switch (mes.type) {
-          case "start": {
-            this.errors = [];
-            break;
+      this.unsubscribeGlobalListener = protocol.globalListen(
+        (mes: SandpackMessage) => {
+          if (mes.type !== "initialized" || !iframe.contentWindow) {
+            return;
           }
-          case "status": {
-            this.status = mes.status;
-            break;
+
+          protocol.register();
+
+          if (this.options.fileResolver) {
+            // TODO: Find a common place for the Protocol to be implemented for both sandpack-core and sandpack-client
+            this.fileResolverProtocol = new Protocol(
+              "file-resolver",
+              async (data: { m: "isFile" | "readFile"; p: string }) => {
+                if (data.m === "isFile") {
+                  return this.options.fileResolver!.isFile(data.p);
+                }
+
+                return this.options.fileResolver!.readFile(data.p);
+              },
+              iframe.contentWindow
+            );
           }
-          case "action": {
-            if (mes.action === "show-error") {
-              this.errors = [...this.errors, extractErrorDetails(mes)];
+
+          this.updatePreview(this.sandboxInfo, true);
+        }
+      );
+
+      this.unsubscribeChannelListener = protocol.channelListen(
+        (mes: SandpackMessage) => {
+          switch (mes.type) {
+            case "start": {
+              this.errors = [];
+              break;
             }
-            break;
-          }
-          case "state": {
-            this.bundlerState = mes.state;
-            break;
+            case "status": {
+              this.status = mes.status;
+              break;
+            }
+            case "action": {
+              if (mes.action === "show-error") {
+                this.errors = [...this.errors, extractErrorDetails(mes)];
+              }
+              break;
+            }
+            case "state": {
+              this.bundlerState = mes.state;
+              break;
+            }
           }
         }
-      }
-    );
+      );
+    });
   }
 
   cleanup(): void {
     this.unsubscribeChannelListener();
     this.unsubscribeGlobalListener();
-    this.iframeProtocol.cleanup();
+    // this.iframeProtocol.cleanup();
   }
 
   updateOptions(options: ClientOptions): void {
@@ -284,11 +278,15 @@ export class SandpackClient {
   }
 
   public dispatch(message: SandpackMessage): void {
-    this.iframeProtocol.dispatch(message);
+    this.iframeProtocols.forEach((protocol) => protocol.dispatch(message));
   }
 
   public listen(listener: ListenerFunction): UnsubscribeFunction {
-    return this.iframeProtocol.channelListen(listener);
+    const unsubs = this.iframeProtocols.map((protocol) =>
+      protocol.channelListen(listener)
+    );
+
+    return () => unsubs.forEach((unsub) => unsub());
   }
 
   /**
@@ -357,17 +355,17 @@ export class SandpackClient {
     return this.sandboxInfo.files;
   }
 
-  private initializeElement() {
-    this.iframe.style.border = "0";
-    this.iframe.style.width = this.options.width || "100%";
-    this.iframe.style.height = this.options.height || "100%";
-    this.iframe.style.overflow = "hidden";
+  // private initializeElement() {
+  //   this.iframe.style.border = "0";
+  //   this.iframe.style.width = this.options.width || "100%";
+  //   this.iframe.style.height = this.options.height || "100%";
+  //   this.iframe.style.overflow = "hidden";
 
-    if (!this.element.parentNode) {
-      // This should never happen
-      throw new Error("Given element does not have a parent.");
-    }
+  //   if (!this.element.parentNode) {
+  //     // This should never happen
+  //     throw new Error("Given element does not have a parent.");
+  //   }
 
-    this.element.parentNode.replaceChild(this.iframe, this.element);
-  }
+  //   this.element.parentNode.replaceChild(this.iframe, this.element);
+  // }
 }

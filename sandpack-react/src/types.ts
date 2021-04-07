@@ -25,6 +25,7 @@ export interface SandpackState {
   updateCurrentFile: (newCode: string) => void;
   openFile: (path: string) => void;
   setActiveFile: (path: string) => void;
+  registerIframe: (element: HTMLIFrameElement) => void;
 
   // Element refs
   // Different components inside the SandpackProvider might register certain elements of interest for sandpack

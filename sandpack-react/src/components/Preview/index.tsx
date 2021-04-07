@@ -45,21 +45,21 @@ export const SandpackPreview: React.FC<PreviewProps> = ({
   viewportOrientation = "portrait",
 }) => {
   const { sandpack, listen } = useSandpack();
+  const iframeRef = React.useRef<HTMLIFrameElement | null>(null);
   const [iframeComputedHeight, setComputedAutoHeight] = React.useState<
     number | null
   >(null);
-  const {
-    status,
-    iframeRef,
-    errorScreenRegisteredRef,
-    openInCSBRegisteredRef,
-  } = sandpack;
+  const { status, errorScreenRegisteredRef, openInCSBRegisteredRef } = sandpack;
 
   const c = useClasser("sp");
 
   React.useEffect(() => {
     errorScreenRegisteredRef.current = true;
     openInCSBRegisteredRef.current = true;
+
+    if (iframeRef.current) {
+      sandpack.registerIframe(iframeRef.current);
+    }
 
     const unsub = listen((message) => {
       if (message.type === "resize" && iframeRef.current) {

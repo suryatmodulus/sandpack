@@ -71,6 +71,8 @@ class SandpackProvider extends React.PureComponent<
   };
 
   client: SandpackClient | null;
+  registeredIframes: HTMLIFrameElement[];
+
   iframeRef: React.RefObject<HTMLIFrameElement>;
   lazyAnchorRef: React.RefObject<HTMLDivElement>;
 
@@ -108,6 +110,7 @@ class SandpackProvider extends React.PureComponent<
     };
 
     this.client = null;
+    this.registeredIframes = [];
     this.queuedListeners = {};
     this.unsubscribeQueuedListeners = {};
     this.iframeRef = React.createRef<HTMLIFrameElement>();
@@ -256,6 +259,10 @@ class SandpackProvider extends React.PureComponent<
     }
   }
 
+  registerIframe = (element: HTMLIFrameElement): void => {
+    this.registeredIframes.push(element);
+  };
+
   runSandpack = (): void => {
     const iframe = this.iframeRef.current;
     if (!iframe) {
@@ -266,7 +273,7 @@ class SandpackProvider extends React.PureComponent<
     }
 
     this.client = new SandpackClient(
-      iframe,
+      this.registeredIframes,
       {
         files: this.state.files,
         template: this.state.environment,
@@ -375,6 +382,7 @@ class SandpackProvider extends React.PureComponent<
       runSandpack: this.runSandpack,
       dispatch: this.dispatchMessage,
       listen: this.addListener,
+      registerIframe: this.registerIframe,
       iframeRef: this.iframeRef,
       lazyAnchorRef: this.lazyAnchorRef,
       errorScreenRegisteredRef: this.errorScreenRegistered,
