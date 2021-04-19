@@ -67,6 +67,11 @@ export interface BundlerState {
   transpiledModules: Record<string, TranspiledModule>;
 }
 
+export interface BundlerTarget {
+  iframe: HTMLIFrameElement;
+  label?: string;
+}
+
 export type ClientStatus =
   | "initializing"
   | "installing-dependencies"

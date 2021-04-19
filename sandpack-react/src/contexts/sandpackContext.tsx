@@ -1,5 +1,6 @@
 import type {
   BundlerState,
+  BundlerTarget,
   ListenerFunction,
   SandpackBundlerFiles,
   SandpackError,
@@ -71,7 +72,9 @@ class SandpackProvider extends React.PureComponent<
   };
 
   client: SandpackClient | null;
-  registeredIframes: HTMLIFrameElement[];
+
+  // Stores iframe refrences until sandpack client is instantiated
+  preRegisteredTargets: BundlerTarget[];
 
   iframeRef: React.RefObject<HTMLIFrameElement>;
   lazyAnchorRef: React.RefObject<HTMLDivElement>;
@@ -110,7 +113,7 @@ class SandpackProvider extends React.PureComponent<
     };
 
     this.client = null;
-    this.registeredIframes = [];
+    this.preRegisteredTargets = [];
     this.queuedListeners = {};
     this.unsubscribeQueuedListeners = {};
     this.iframeRef = React.createRef<HTMLIFrameElement>();
@@ -259,8 +262,15 @@ class SandpackProvider extends React.PureComponent<
     }
   }
 
-  registerIframe = (element: HTMLIFrameElement): void => {
-    this.registeredIframes.push(element);
+  registerIframe = (element: HTMLIFrameElement, label?: string): void => {
+    if (this.state.sandpackStatus === "running") {
+      // register iframe at runtime
+    } else {
+      this.preRegisteredTargets.push({
+        iframe: element,
+        label: label,
+      });
+    }
   };
 
   runSandpack = (): void => {
@@ -273,7 +283,7 @@ class SandpackProvider extends React.PureComponent<
     }
 
     this.client = new SandpackClient(
-      this.registeredIframes,
+      this.preRegisteredTargets.map((target) => target.iframe),
       {
         files: this.state.files,
         template: this.state.environment,
