@@ -270,7 +270,7 @@ class SandpackProvider extends React.PureComponent<
 
   registerIframe = (element: HTMLIFrameElement, label?: string): void => {
     if (this.state.sandpackStatus === "running") {
-      // register iframe at runtime
+      this.client?.registerBundlerTarget({ iframe: element, label });
     } else {
       this.preRegisteredTargets.push({
         iframe: element,

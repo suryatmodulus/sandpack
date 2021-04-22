@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState } from "react";
 
 import { useSandpack } from "../hooks/useSandpack";
 import {
@@ -16,6 +16,8 @@ import {
   useActiveCode,
   useSandpackNavigation,
   SandpackStack,
+  ViewportSize,
+  ViewportOrientation,
 } from "../index";
 
 export default {
@@ -216,12 +218,59 @@ export const JustIframe = (): React.ReactElement => {
   );
 };
 
-export const MultiplePreviews: React.FC = () => (
-  <SandpackProvider template="react">
-    <SandpackLayout theme="codesandbox-dark">
-      <SandpackCodeEditor />
-      <SandpackPreview />
-      <SandpackPreview />
-    </SandpackLayout>
-  </SandpackProvider>
-);
+const ResponsivePreview = () => {
+  const [viewport, setViewport] = useState<ViewportSize>("Moto G4");
+  const [
+    viewportOrientation,
+    setViewportOrientation,
+  ] = useState<ViewportOrientation>("portrait");
+
+  return (
+    <div style={{ border: "1px solid #ccc", marginRight: 8, marginTop: 8 }}>
+      <select onChange={(evt) => setViewport(evt.target.value as ViewportSize)}>
+        <option value="Moto G4">Moto G4</option>
+        <option value="iPhone X">iPhone X</option>
+        <option value="Pixel 2">Pixel 2</option>
+        <option value="Surface Duo">Surface Duo</option>
+        <option value="iPad">iPad</option>
+      </select>
+
+      <select
+        onChange={(evt) =>
+          setViewportOrientation(evt.target.value as ViewportOrientation)
+        }
+      >
+        <option value="portrait">portrait</option>
+        <option value="landscape">landscape</option>
+      </select>
+      <SandpackPreview
+        viewportOrientation={viewportOrientation}
+        viewportSize={viewport}
+      />
+    </div>
+  );
+};
+
+export const MultiplePreviews: React.FC = () => {
+  const [previewCount, setPreviewCount] = useState(0);
+
+  const previewIndexes = [...Array(previewCount).keys()];
+
+  return (
+    <SandpackProvider template="react">
+      <SandpackThemeProvider>
+        <SandpackCodeEditor />
+
+        <button onClick={() => setPreviewCount(previewCount + 1)}>
+          Add Preview
+        </button>
+
+        <div style={{ display: "flex", alignItems: "flex-start" }}>
+          {previewIndexes.map((previewIndex) => (
+            <ResponsivePreview key={previewIndex} />
+          ))}
+        </div>
+      </SandpackThemeProvider>
+    </SandpackProvider>
+  );
+};

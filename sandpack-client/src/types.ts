@@ -69,6 +69,7 @@ export interface BundlerState {
 
 export interface BundlerTarget {
   iframe: HTMLIFrameElement;
+  startRoute?: string;
   label?: string;
 }
 

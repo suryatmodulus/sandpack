@@ -18,6 +18,7 @@ import type {
   SandpackMessage,
   ListenerFunction,
   SandpackError,
+  BundlerTarget,
 } from "./types";
 import {
   createPackageJSON,
@@ -201,6 +202,44 @@ export class SandpackClient {
         }
       );
     });
+  }
+
+  registerBundlerTarget(bundlerTarget: BundlerTarget): void {
+    const { iframe, label, startRoute } = bundlerTarget;
+
+    const origin = startRoute
+      ? new URL(startRoute, this.bundlerURL).toString()
+      : this.bundlerURL;
+
+    const protocol = new IFrameProtocol(iframe, origin);
+    this.iframeProtocols.push(protocol);
+
+    this.unsubscribeGlobalListener = protocol.globalListen(
+      (mes: SandpackMessage) => {
+        if (mes.type !== "initialized" || !iframe.contentWindow) {
+          return;
+        }
+
+        protocol.register();
+
+        if (this.options.fileResolver) {
+          // TODO: Find a common place for the Protocol to be implemented for both sandpack-core and sandpack-client
+          this.fileResolverProtocol = new Protocol(
+            "file-resolver",
+            async (data: { m: "isFile" | "readFile"; p: string }) => {
+              if (data.m === "isFile") {
+                return this.options.fileResolver!.isFile(data.p);
+              }
+
+              return this.options.fileResolver!.readFile(data.p);
+            },
+            iframe.contentWindow
+          );
+        }
+
+        this.updatePreview(this.sandboxInfo, true);
+      }
+    );
   }
 
   cleanup(): void {
