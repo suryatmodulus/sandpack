@@ -2,7 +2,10 @@ import * as React from "react";
 
 import { useSandpack } from "./useSandpack";
 
-export type LoadingOverlayState = "visible" | "fading" | "hidden";
+export type LoadingOverlayState = "visible" | "fading" | "hidden" | "timeout";
+
+const FADE_DELAY = 1000; // 1 second delay one initial load, only relevant if the loading overlay is visible.
+const FADE_ANIMATION_DURATION = 500; // 500 ms fade animation
 
 export const useLoadingOverlayState = (): LoadingOverlayState => {
   const { sandpack, listen } = useSandpack();
@@ -13,8 +16,8 @@ export const useLoadingOverlayState = (): LoadingOverlayState => {
 
   React.useEffect(() => {
     sandpack.loadingScreenRegisteredRef.current = true;
-    let innerTimeoutHook: NodeJS.Timer;
-    let outerTimeoutHook: NodeJS.Timer;
+    let innerHook: NodeJS.Timer;
+    let outerHook: NodeJS.Timer;
 
     const unsub = listen((message) => {
       if (message.type === "start" && message.firstLoad === true) {
@@ -22,24 +25,28 @@ export const useLoadingOverlayState = (): LoadingOverlayState => {
       }
 
       if (message.type === "done") {
-        outerTimeoutHook = setTimeout(() => {
+        outerHook = setTimeout(() => {
           setLoadingOverlayState(
             (prev) => (prev === "visible" ? "fading" : "hidden") // Only set 'fading' if the current state is 'visible'
           );
-          innerTimeoutHook = setTimeout(
+          innerHook = setTimeout(
             () => setLoadingOverlayState("hidden"),
-            500 // 500 ms fade animation
+            FADE_ANIMATION_DURATION
           );
-        }, 1000); // 1 second delay one initial load, only relevant if the loading overlay is visible.
+        }, FADE_DELAY);
       }
     });
 
     return () => {
-      clearTimeout(outerTimeoutHook);
-      clearTimeout(innerTimeoutHook);
+      clearTimeout(outerHook);
+      clearTimeout(innerHook);
       unsub();
     };
   }, []);
+
+  if (sandpack.status === "timeout") {
+    return "timeout";
+  }
 
   if (sandpack.status !== "running") {
     return "hidden";
