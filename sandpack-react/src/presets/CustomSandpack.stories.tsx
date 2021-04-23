@@ -252,12 +252,15 @@ const ResponsivePreview = () => {
 };
 
 export const MultiplePreviews: React.FC = () => {
-  const [previewCount, setPreviewCount] = useState(0);
+  const [previewCount, setPreviewCount] = useState(3);
 
   const previewIndexes = [...Array(previewCount).keys()];
 
   return (
-    <SandpackProvider template="react">
+    <SandpackProvider
+      template="react"
+      customSetup={{ files: { "/App.js": code1 } }}
+    >
       <SandpackThemeProvider>
         <SandpackCodeEditor />
 

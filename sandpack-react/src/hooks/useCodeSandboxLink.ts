@@ -19,8 +19,7 @@ const getFileParameters = (files: SandpackBundlerFiles) => {
     {}
   );
 
-  // @ts-ignore
-  return getParameters({ files: normalized, template: "parcel" });
+  return getParameters({ files: normalized });
 };
 
 export const useCodeSandboxLink = (): string => {
